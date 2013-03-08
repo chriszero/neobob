@@ -21,8 +21,9 @@
 #define NOLEDS 30
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NOLEDS, 6, NEO_GRB + NEO_KHZ800);
-int out_r, out_g, out_b, state, rec, pos;
-const int SHOWDELAY_MIRCO = (NOLEDS * 8 * 20 / 16) + 500; // 20Cycles per bit @ 16MHz & 800kHz
+int state, rec, pos;
+char buf[3];
+const int SHOWDELAY_MIRCO = (NOLEDS * 8 * 20 / 16) + 200; // 20Cycles per bit @ 16MHz & 800kHz
 
 void setup()
 {
@@ -33,7 +34,7 @@ void setup()
   for(int i = 0; i < NOLEDS; i++) strip.setPixelColor(i, 0, 0, 0);
   strip.show();
   delayMicroseconds(SHOWDELAY_MIRCO);
-  
+
   // Tested and works with 500,000 baud (Arduino ProMini with FTDI & boblight@linux)
   Serial.begin(500000);
 
@@ -59,39 +60,20 @@ void setup()
       }
       break;
 
-    case 2: // read RED
-      if(Serial.peek() > -1) {
-        out_r = Serial.read();
-        if(out_r == 0xFF) out_r = 0xFE;
+    case 2:
+      if(Serial.available() > 2) {
+        Serial.readBytes(buf, 3);
+        if(buf[2] == 0xFF) buf[2] = 0xFE; // 0xFF is not allowed for blue !!!
+
+        strip.setPixelColor(pos++, buf[0], buf[1], buf[2]);
+      }
+
+      if(pos > NOLEDS) {
         state = 3;
       }
-      break;
+      break;   
 
-    case 3: // read GREEN
-      if(Serial.peek() > -1) {
-        out_g = Serial.read();
-        if(out_g == 0xFF) out_g = 0xFE;
-        state = 4;      
-      }
-      break;
-
-    case 4: // read BLUE and set Pixel
-      if(Serial.peek() > -1) {
-        out_b = Serial.read();
-        if(out_b == 0xFF) out_b = 0xFE;
-
-        strip.setPixelColor(pos++, out_r, out_g, out_b);
-
-        if(pos < NOLEDS) {
-          state = 2;
-        }
-        else {
-          state = 5; 
-        }
-      }
-      break;
-
-    case 5:
+    case 3:
       strip.show();
       delayMicroseconds(SHOWDELAY_MIRCO);
       state = 0;
@@ -103,6 +85,7 @@ void setup()
 void loop()
 {
 }
+
 
 
 
