@@ -19,16 +19,19 @@
  */
 
 #define NOLEDS 30
+#define TIMEOUT_MS 1000 
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NOLEDS, 6, NEO_GRB + NEO_KHZ800);
 int state, rec, pos;
 char buf[3];
 const int SHOWDELAY_MIRCO = (NOLEDS * 8 * 20 / 16) + 200; // 20Cycles per bit @ 16MHz & 800kHz
+unsigned long timeoutmark = 0;
 
 void setup()
 {
   state = 0;
-
+  timeoutmark = millis();
+  
   strip.begin();
   // Initialize all pixels to 'off'
   for(int i = 0; i < NOLEDS; i++) strip.setPixelColor(i, 0, 0, 0);
@@ -76,8 +79,16 @@ void setup()
     case 3:
       strip.show();
       delayMicroseconds(SHOWDELAY_MIRCO);
+      timeoutmark = millis();
       state = 0;
       break;
+    }
+    
+    // If we received no data for more than TIMEOUT_MS, set all pixels to black
+    if(millis()  - timeoutmark > TIMEOUT_MS) {
+      for(int i = 0; i < NOLEDS; i++) strip.setPixelColor(i, 0, 0, 0);
+      // show via 'state 3'
+      state = 3;
     }
   }  
 }
