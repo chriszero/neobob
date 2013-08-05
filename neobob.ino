@@ -18,23 +18,48 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define LED 13
+#define LDR A0
+#define LDR_MIN 600 // heller = niedriger Wert = AUS
+#define LDR_MAX 850 // dunkler = höherer Wert = AN
+//#define LDR_TEST 0
+
 #define NOLEDS 30
 #define TIMEOUT_MS 1000 
 
+enum myState {
+  Start = 0,
+  Head_2 = 1,
+  Data = 2,
+  Ldr_Check = 3,
+  Show = 4
+};
+
+
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NOLEDS, 6, NEO_GRB + NEO_KHZ800);
-int state, rec, pos;
+int rec, pos;
+myState state;
+boolean show;
 char buf[3];
 const int SHOWDELAY_MIRCO = (NOLEDS * 8 * 20 / 16) + 200; // 20Cycles per bit @ 16MHz & 800kHz
 unsigned long timeoutmark = 0;
+unsigned int ldr_value = 0;
 
 void setup()
 {
-  state = 0;
+  pinMode(LDR, INPUT);
+  pinMode(LED, OUTPUT);
+#ifdef LDR_TEST
+  ldrTest();
+#endif
+
+  state = Start;
+  show = true;
   timeoutmark = millis();
   
   strip.begin();
   // Initialize all pixels to 'off'
-  for(int i = 0; i < NOLEDS; i++) strip.setPixelColor(i, 0, 0, 0);
+  setAllBlack();
   strip.show();
   delayMicroseconds(SHOWDELAY_MIRCO);
 
@@ -44,54 +69,94 @@ void setup()
   // avoid using the loop function
   for(;;) {
     switch(state) {
-    case 0:
-      if(Serial.peek() > -1) {
-        rec = Serial.read();
-        if(rec == 0xAA) state = 1;
-      }
-      break;
-    case 1:
-      if(Serial.peek() > -1) {
-        rec = Serial.read();
-        if(rec == 0x55) {
-          state = 2;
-          pos = 0;
+      case Start:
+        if(Serial.peek() > -1) {
+          rec = Serial.read();
+          if(rec == 0xAA) state = Head_2;
         }
-        else {
-          state = 0;
+        break;
+      case Head_2:
+        if(Serial.peek() > -1) {
+          rec = Serial.read();
+          if(rec == 0x55) {
+            state = Data;
+            pos = 0;
+          }
+          else {
+            state = Start;
+          }
         }
-      }
-      break;
-
-    case 2:
-      if(Serial.available() > 2) {
-        Serial.readBytes(buf, 3);
-        if(buf[2] == 0xFF) buf[2] = 0xFE; // 0xFF is not allowed for blue !!!
-
-        strip.setPixelColor(pos++, buf[0], buf[1], buf[2]);
-      }
-
-      if(pos > NOLEDS) {
-        state = 3;
-      }
-      break;   
-
-    case 3:
-      strip.show();
-      delayMicroseconds(SHOWDELAY_MIRCO);
-      timeoutmark = millis();
-      state = 0;
-      break;
+        break;
+  
+      case Data:
+        if(Serial.available() > 2) {
+          Serial.readBytes(buf, 3);
+          if(buf[2] == 0xFF) buf[2] = 0xFE; // 0xFF is not allowed for blue !!!
+  
+          strip.setPixelColor(pos++, buf[0], buf[1], buf[2]);
+        }
+  
+        if(pos > NOLEDS) {
+          state = Ldr_Check;
+        }
+        break;   
+      
+      case Ldr_Check:
+         ldr_value = analogRead(LDR);
+         if(ldr_value < LDR_MIN) { // AUS
+           show = false;
+           digitalWrite(LED, LOW);
+         }
+         else if (ldr_value > LDR_MAX) { // AN
+           show = true;
+           digitalWrite(LED, HIGH);
+         }
+         state = Show;
+        break;
+  
+      case Show:
+        if(show == false) setAllBlack();
+        strip.show();
+        delayMicroseconds(SHOWDELAY_MIRCO);
+        timeoutmark = millis();
+        state = Start;
+        break;
     }
     
     // If we received no data for more than TIMEOUT_MS, set all pixels to black
     if(millis()  - timeoutmark > TIMEOUT_MS) {
-      for(int i = 0; i < NOLEDS; i++) strip.setPixelColor(i, 0, 0, 0);
-      // show via 'state 3'
-      state = 3;
+      setAllBlack();
+      state = Show;
     }
   }  
 }
+
+void setAllBlack() {
+ for(int i = 0; i < NOLEDS; i++) strip.setPixelColor(i, 0, 0, 0); 
+}
+
+#ifdef LDR_TEST
+void ldrTest() {
+  Serial.begin(9600);
+  
+  for(;;) {
+   ldr_value = analogRead(LDR);
+   Serial.print(ldr_value);
+   if(ldr_value < LDR_MAX) {
+     Serial.println(" OFF");
+     digitalWrite(LED, LOW);
+   }
+   else if (ldr_value > LDR_MIN) {
+     Serial.println(" ON");
+     digitalWrite(LED, HIGH);
+   }
+   else {
+     Serial.println();
+   }
+   delay(100); 
+  }
+}
+#endif
 
 void loop()
 {
