@@ -20,9 +20,9 @@
 
 #define LED 13
 #define LDR A0
-#define LDR_MIN 600 // heller = niedriger Wert = AUS
-#define LDR_MAX 850 // dunkler = höherer Wert = AN
-//#define LDR_TEST 0
+#define LDR_MIN 700 // heller = niedriger Wert = AUS
+#define LDR_MAX 980 // dunkler = höherer Wert = AN
+//#define LDR_TEST 1
 
 #define NOLEDS 30
 #define TIMEOUT_MS 1000 
@@ -138,21 +138,21 @@ void setAllBlack() {
 #ifdef LDR_TEST
 void ldrTest() {
   Serial.begin(9600);
-  
+  boolean show = false;
   for(;;) {
    ldr_value = analogRead(LDR);
    Serial.print(ldr_value);
-   if(ldr_value < LDR_MAX) {
-     Serial.println(" OFF");
-     digitalWrite(LED, LOW);
-   }
-   else if (ldr_value > LDR_MIN) {
-     Serial.println(" ON");
+   if(ldr_value > LDR_MAX) {
+     //Serial.println(" ON");
      digitalWrite(LED, HIGH);
+     show = true;
    }
-   else {
-     Serial.println();
+   else if (ldr_value < LDR_MIN) {
+     //Serial.println(" OFF");
+     digitalWrite(LED, LOW);
+     show = false;
    }
+   show ? Serial.println(" ON") : Serial.println(" OFF");
    delay(100); 
   }
 }
