@@ -468,20 +468,10 @@ void Adafruit_NeoPixel::show(void) {
 }
 
 // Set pixel color from separate R,G,B components:
-/*
 void Adafruit_NeoPixel::setPixelColor(
  uint16_t n, uint8_t r, uint8_t g, uint8_t b) {
   if(n < numLEDs) {
-    uint8_t *p = &pixels[n * 3];
-    if((type & NEO_COLMASK) == NEO_GRB) { *p++ = g; *p++ = r; }
-    else                                { *p++ = r; *p++ = g; }
-    *p = b;
-  }
-}
-*/
-void Adafruit_NeoPixel::setPixelColor(
- uint16_t n, uint8_t r, uint8_t g, uint8_t b) {
-  if(n < numLEDs) {
+    if(b == 0xFF) b = 0xFE;
     uint8_t *p = &pixels[n * 3];
     if((type & NEO_COLMASK) == NEO_GRB) { *p++ = b; *p++ = r; }
     else                                { *p++ = r; *p++ = g; }

@@ -18,48 +18,47 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define LED 13
-#define LDR A0
-#define LDR_MIN 700 // heller = niedriger Wert = AUS
-#define LDR_MAX 980 // dunkler = höherer Wert = AN
-//#define LDR_TEST 1
+#define RED    0xFF0000
+#define GREEN  0x00FF00
+#define BLUE   0x0000FF
+#define YELLOW 0xFFFF00
+#define PINK   0xFF1088
+#define ORANGE 0xE05800
+#define WHITE  0xFFFFFF
+#define BLACK  0x000000
 
-#define NOLEDS 30
+#define PIN 13 // Datapin
+#define NOLEDS 192
 #define TIMEOUT_MS 1000 
 
 enum myState {
   Start = 0,
   Head_2 = 1,
   Data = 2,
-  Ldr_Check = 3,
-  Show = 4
+  Show = 3
 };
 
 
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(NOLEDS, 6, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(NOLEDS, PIN, NEO_GRB + NEO_KHZ800);
 int rec, pos;
 myState state;
 boolean show;
-char buf[3];
+char buf[6];
 const int SHOWDELAY_MIRCO = (NOLEDS * 8 * 20 / 16) + 200; // 20Cycles per bit @ 16MHz & 800kHz
+const char head[] = {0x41, 0x64, 0x61, 0x00, 0xC7, 0x92};
 unsigned long timeoutmark = 0;
-unsigned int ldr_value = 0;
 
 void setup()
 {
-  pinMode(LDR, INPUT);
-  pinMode(LED, OUTPUT);
-#ifdef LDR_TEST
-  ldrTest();
-#endif
-
+  delay(1000);
   state = Start;
   show = true;
   timeoutmark = millis();
   
   strip.begin();
   // Initialize all pixels to 'off'
-  setAllBlack();
+  colorWipe(PINK, 10);
+  colorWipe(BLACK, 0);
   strip.show();
   delayMicroseconds(SHOWDELAY_MIRCO);
 
@@ -70,52 +69,40 @@ void setup()
   for(;;) {
     switch(state) {
       case Start:
-        if(Serial.peek() > -1) {
+        if(Serial.available() > 0) {
           rec = Serial.read();
-          if(rec == 0xAA) state = Head_2;
+          if(rec == head[0]) state = Head_2;
         }
         break;
+        
       case Head_2:
-        if(Serial.peek() > -1) {
-          rec = Serial.read();
-          if(rec == 0x55) {
-            state = Data;
-            pos = 0;
-          }
-          else {
-            state = Start;
+        if(Serial.available() > sizeof(head) - 2) {
+          Serial.readBytes(buf, sizeof(head) - 1);
+          for(int p = 0; p < sizeof(head) - 1; p++) {
+            if(buf[p] == head[p+1]) {
+             state = Data;
+             pos = 0;
+            }
+            else {
+             state = Start;
+             break; 
+            }
           }
         }
         break;
   
       case Data:
         if(Serial.available() > 2) {
-          Serial.readBytes(buf, 3);
-          if(buf[2] == 0xFF) buf[2] = 0xFE; // 0xFF is not allowed for blue !!!
-  
+          Serial.readBytes(buf, 3);  
           strip.setPixelColor(pos++, buf[0], buf[1], buf[2]);
         }
   
         if(pos > NOLEDS) {
-          state = Ldr_Check;
+          state = Show;
         }
         break;   
       
-      case Ldr_Check:
-         ldr_value = analogRead(LDR);
-         if(ldr_value < LDR_MIN) { // AUS
-           show = false;
-           digitalWrite(LED, LOW);
-         }
-         else if (ldr_value > LDR_MAX) { // AN
-           show = true;
-           digitalWrite(LED, HIGH);
-         }
-         state = Show;
-        break;
-  
       case Show:
-        if(show == false) setAllBlack();
         strip.show();
         delayMicroseconds(SHOWDELAY_MIRCO);
         timeoutmark = millis();
@@ -125,43 +112,24 @@ void setup()
     
     // If we received no data for more than TIMEOUT_MS, set all pixels to black
     if(millis()  - timeoutmark > TIMEOUT_MS) {
-      setAllBlack();
+      colorWipe(BLACK, 0);
       state = Show;
     }
   }  
 }
 
-void setAllBlack() {
- for(int i = 0; i < NOLEDS; i++) strip.setPixelColor(i, 0, 0, 0); 
-}
-
-#ifdef LDR_TEST
-void ldrTest() {
-  Serial.begin(9600);
-  boolean show = false;
-  for(;;) {
-   ldr_value = analogRead(LDR);
-   Serial.print(ldr_value);
-   if(ldr_value > LDR_MAX) {
-     //Serial.println(" ON");
-     digitalWrite(LED, HIGH);
-     show = true;
-   }
-   else if (ldr_value < LDR_MIN) {
-     //Serial.println(" OFF");
-     digitalWrite(LED, LOW);
-     show = false;
-   }
-   show ? Serial.println(" ON") : Serial.println(" OFF");
-   delay(100); 
+void colorWipe(uint32_t color, int wait)
+{
+  for (int i=0; i < NOLEDS; i++) {
+    strip.setPixelColor(i, color);
+    if(wait > 0) {
+      strip.show();
+      delay(wait);
+    }
   }
 }
-#endif
 
 void loop()
 {
 }
-
-
-
 
