@@ -2,7 +2,7 @@
 
 /*
  * neobob
- * Copyright (C) Christian Völlinger  2013 
+ * Copyright (C) Christian Völlinger  2015 
  * 
  * neobob is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -91,14 +91,13 @@ void setup()
         }
         break;
   
-      case Data:
-        if(Serial.available() > 2) {
+      case Data:  
+        if(pos >= NOLEDS) {
+          state = Show;
+        }
+        else if(Serial.available() > 2) {
           Serial.readBytes(buf, 3);  
           strip.setPixelColor(pos++, buf[0], buf[1], buf[2]);
-        }
-  
-        if(pos > NOLEDS) {
-          state = Show;
         }
         break;   
       

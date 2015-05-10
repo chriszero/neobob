@@ -2,4 +2,10 @@ neobob
 =========================
 Arduino code to control a neopixel based RGB strip with boblight.
 
-Inculdes a modified Adafruit_NeoPixel for use with TM1829 stripes.
+It's important to use following option in your boblight.conf 
+```
+[device]
+syncmode off
+```
+
+Inculdes a modified Adafruit_NeoPixel for use with TM1829 stripes, remove it if you use the original stripes.
