@@ -1,17 +1,17 @@
 /*
  * neobob
- * Copyright (C) Christian Völlinger  2015
- *
+ * Copyright (C) Christian Völlinger  2015 
+ * 
  * neobob is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * neobob is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -66,7 +66,7 @@ void setup()
   timeoutmark = millis();
 
 #ifdef USEFASTLED
-  FastLED.addLeds<NEOPIXEL, PIN>(leds, NOLEDS);
+  FastLED.addLeds<NEOPIXEL,PIN>(leds, NOLEDS);
 #else
   strip.begin();
 #endif
@@ -82,82 +82,78 @@ void setup()
   Serial.begin(500000);
 
   // avoid using the loop function
-  for (;;) {
-    switch (state) {
+  for(;;) {
+    switch(state) {
       case Start:
-        if (Serial.available() > 0) {
+        if(Serial.available() > 0) {
           rec = Serial.read();
-          if (rec == head[0]) state = Head_2;
+          if(rec == head[0]) state = Head_2;
         }
         break;
-
+        
       case Head_2:
-        if (Serial.available() > sizeof(head) - 2) {
+        if(Serial.available() > sizeof(head) - 2) {
           Serial.readBytes(buf, sizeof(head) - 1);
-          for (int p = 0; p < sizeof(head) - 1; p++) {
-            if (buf[p] == head[p + 1]) {
-              state = Data;
-              pos = 0;
+          for(int p = 0; p < sizeof(head) - 1; p++) {
+            if(buf[p] == head[p+1]) {
+             state = Data;
+             pos = 0;
             }
             else {
-              state = Start;
-              break;
+             state = Start;
+             break; 
             }
           }
         }
         break;
-
-      case Data:
-        if (pos >= NOLEDS) {
+  
+      case Data:  
+        if(pos >= NOLEDS) {
           state = Show;
         }
-        else if (Serial.available() > 2) {
+        else if(Serial.available() > 2) {
 #ifdef USEFASTLED
-          char* posPointer = (char*) &leds;
-          posPointer += pos * 3;
-          Serial.readBytes(posPointer, 3);
-          pos++;
+         char* posPointer = (char*) &leds;
+	 posPointer += pos*3;
+         Serial.readBytes(posPointer, 3); 
+         pos++;
 #else
-          Serial.readBytes(buf, 3);
-          strip.setPixelColor(pos++, buf[0], buf[1], buf[2]);
-#endif
+	 Serial.readBytes(buf, 3);  
+         strip.setPixelColor(pos++, buf[0], buf[1], buf[2]);
+#endif 
         }
-        break;
-
+        break;   
+      
       case Show:
-        ShowLed();
+        Show();
         timeoutmark = millis();
         state = Start;
         break;
     }
-
+    
     // If we received no data for more than TIMEOUT_MS, set all pixels to black
-    if (millis()  - timeoutmark > TIMEOUT_MS) {
+    if(millis()  - timeoutmark > TIMEOUT_MS) {
       colorWipe(BLACK);
       state = Show;
     }
-  }
+  }  
 }
 
 void colorWipe(uint32_t color)
 {
-  for (int i = 0; i < NOLEDS; i++) {
-#ifdef USEFASTLED
+  for (int i=0; i < NOLEDS; i++) {
     leds[i] = color;
-#else
-    strip.setPixelColor(i, color);
-#endif
   }
-  ShowLed();
+  Show();
 }
 
-void ShowLed()
+void Show()
 {
 #ifdef USEFASTLED
-  FastLED.show();
+	FastLED.show();
 #else
-  strip.show();
-  delayMicroseconds(SHOWDELAY_MIRCO);
+	strip.show();
+	delayMicroseconds(SHOWDELAY_MIRCO);
 #endif
 }
 

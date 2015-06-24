@@ -1,6 +1,9 @@
 neobob
 =========================
-Arduino code to control a neopixel based RGB strip with boblight.
+Arduino code to control a neopixel or FastLED based RGB strip with boblight.
+Configure it via the USEFASTLED #define
+
+for FastLED see https://github.com/FastLED/FastLED
 
 It's important to use following option in your boblight.conf 
 ```
